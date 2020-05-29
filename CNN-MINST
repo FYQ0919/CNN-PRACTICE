@@ -95,7 +95,7 @@ net = LeNet().to(device)
 criterion = nn.CrossEntropyLoss()#定义损失函数
 optimizer = optim.SGD(net.parameters(),lr=LR,momentum=Momentum)
 
-epoch = 2
+epoch = 10
 if __name__ == '__main__':
     for epoch in range(epoch):
         sum_loss = 0.0
