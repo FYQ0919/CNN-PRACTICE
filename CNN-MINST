@@ -1,0 +1,134 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri May 29 09:11:50 2020
+
+@author: fyq
+"""
+
+import time
+start =time.clock()
+
+
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets,transforms
+from torch.autograd import Variable
+
+class LeNet(nn.Module):
+    def __init__(self):
+        super(LeNet, self).__init__()
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(1, 6, 3, 1, 2),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2)
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(6, 16, 5),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2)
+        )
+
+        self.fc1 = nn.Sequential(
+            nn.Linear(16 * 5 * 5, 120),
+            nn.BatchNorm1d(120),
+            nn.ReLU()
+        )
+
+        self.fc2 = nn.Sequential(
+            nn.Linear(120, 84),
+            nn.BatchNorm1d(84),
+            nn.ReLU()
+        )
+
+        self.fc3 = nn.Linear(84, 10)
+
+    #         self.sfx = nn.Softmax()
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        #         print(x.shape)
+        x = x.view(x.size()[0], -1)
+        x = self.fc1(x)
+        x = self.fc2(x)
+        x = self.fc3(x)
+        #         x = self.sfx(x)
+        return x
+
+device = torch.device('cpu')
+batch_size = 64
+LR = 0.01
+Momentum = 0.9
+
+# 下载数据集
+train_dataset = datasets.MNIST(root = './data/',
+                              train=True,
+                              transform = transforms.ToTensor(),
+                              download=False)
+test_dataset =datasets.MNIST(root = './data/',
+                            train=False,
+                            transform=transforms.ToTensor(),
+                            download=False)
+#建立一个数据迭代器
+train_loader = torch.utils.data.DataLoader(dataset = train_dataset,
+                                          batch_size = batch_size,
+                                          shuffle = True)
+test_loader = torch.utils.data.DataLoader(dataset = test_dataset,
+                                         batch_size = batch_size,
+                                         shuffle = False)
+
+#实现单张图片可视化
+# images,labels = next(iter(train_loader))
+# img  = torchvision.utils.make_grid(images)
+# img = img.numpy().transpose(1,2,0)
+# # img.shape
+# std = [0.5,0.5,0.5]
+# mean = [0.5,0.5,0.5]
+# img = img*std +mean
+# cv2.imshow('win',img)
+# key_pressed = cv2.waitKey(0)
+
+net = LeNet().to(device)
+criterion = nn.CrossEntropyLoss()#定义损失函数
+optimizer = optim.SGD(net.parameters(),lr=LR,momentum=Momentum)
+
+epoch = 1
+if __name__ == '__main__':
+    for epoch in range(epoch):
+        sum_loss = 0.0
+        for i, data in enumerate(train_loader):
+            inputs, labels = data
+            inputs, labels = Variable(inputs), Variable(labels)
+            optimizer.zero_grad()#将梯度归零
+            outputs = net(inputs)#将数据传入网络进行前向运算
+            loss = criterion(outputs, labels)#得到损失函数
+            loss.backward()#反向传播
+            optimizer.step()#通过梯度做一步参数更新
+
+            # print(loss)
+            sum_loss += loss.item()
+            if i % 100 == 99:
+                print('[%d,%d] loss:%.03f' % (epoch + 1, i + 1, sum_loss / 100))
+                sum_loss = 0.0
+
+    #验证测试集
+    net.eval()#将模型变换为测试模式
+    correct = 0
+    total = 0
+    for data_test in test_loader:
+        images, labels = data_test
+        images, labels = Variable(images), Variable(labels)
+        output_test = net(images)
+        # print("output_test:",output_test.shape)
+
+        _, predicted = torch.max(output_test, 1)
+        # print("predicted:",predicted.shape)
+        total += labels.size(0)
+        correct += (predicted == labels).sum()
+    print("correct1: ",correct)
+    print("Test acc: {0}".format(correct.item() / len(test_dataset)))#.cpu().numpy()
+    end = time.clock()
+print('Running time: %s Seconds'%(end-start))
